@@ -1,0 +1,12 @@
+# Local credentials and per-machine configuration
+.env
+.env.*
+!.env.example
+
+# Runtime files and local tools
+*.log
+/storage/*
+!/storage/.htaccess
+!/storage/.gitkeep
+/node_modules/
+/vendor/

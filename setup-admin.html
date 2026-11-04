@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f6f0">
+  <title>Create admin account — Project Deno</title>
+  <style>
+    :root{--bg:#f7f6f0;--paper:#fffefa;--ink:#202e29;--muted:#727c74;--line:#e5e6dc;--green:#1f5144;--dark:#173d33;--red:#a83e2c}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.5}.wrap{width:min(1050px,calc(100% - 36px));margin:auto}.header{border-bottom:1px solid var(--line)}.nav{height:68px;display:flex;align-items:center;justify-content:space-between}.brand{display:flex;align-items:center;gap:10px;color:var(--ink);text-decoration:none;font-size:19px;font-weight:850}.brand-mark{width:33px;height:33px;display:grid;place-items:center;border-radius:11px;background:var(--green);color:#fff}.back{color:var(--green);font-size:13px;font-weight:700;text-decoration:none}.panel{width:min(440px,100%);margin:64px auto;padding:25px;border:1px solid var(--line);border-radius:16px;background:var(--paper);box-shadow:0 8px 26px rgba(40,55,44,.05)}h1{margin:0 0 6px;font-size:27px;letter-spacing:-1px}.intro{margin:0 0 19px;color:var(--muted);font-size:14px}.field{display:grid;gap:6px;margin-bottom:12px}.field label{font-size:12px;font-weight:750}.field input{width:100%;border:1px solid #dfe3d9;border-radius:10px;background:#fff;padding:11px 12px;color:var(--ink);font:inherit}.button{border:0;border-radius:99px;background:var(--green);color:#fff;padding:11px 17px;font:inherit;font-weight:750;cursor:pointer}.button:hover{background:var(--dark)}.button:disabled{opacity:.6;cursor:wait}.status{min-height:21px;margin:12px 0 0;color:var(--green);font-size:13px}.status[data-state="error"]{color:var(--red)}.notice{margin-top:15px;padding:12px;border-radius:10px;background:#f1f3eb;color:#677169;font-size:12px}.success-link{display:inline-block;margin-top:15px;color:var(--green);font-weight:750;text-decoration:none}.footer{margin-top:35px;padding:21px 0;border-top:1px solid var(--line);color:var(--muted);font-size:12px}
+  </style>
+</head>
+<body>
+  <header class="header"><div class="wrap nav"><a class="brand" href="index.html"><span class="brand-mark">PD</span><span>Project Deno</span></a><a class="back" href="admin.html">Admin sign in →</a></div></header>
+  <main class="wrap">
+    <form class="panel" id="setup-form" hidden>
+      <h1>Create first admin</h1><p class="intro">This one-time setup creates the admin account for managing events.</p>
+      <div class="field" id="setup-key-field" hidden><label for="setup-key">One-time server setup key</label><input id="setup-key" name="setup-key" type="password" autocomplete="off" minlength="32" maxlength="256"></div>
+      <div class="field"><label for="username">Username</label><input id="username" name="username" autocomplete="username" minlength="3" maxlength="64" pattern="[A-Za-z0-9_.-]{3,64}" required></div>
+      <div class="field"><label for="password">Password (at least 12 characters)</label><input id="password" name="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required></div>
+      <div class="field"><label for="confirmation">Confirm password</label><input id="confirmation" name="confirmation" type="password" autocomplete="new-password" minlength="12" maxlength="128" required></div>
+      <button class="button" id="create-button" type="submit">Create admin account</button>
+      <p class="status" id="setup-status" role="status" aria-live="polite"></p>
+      <a class="success-link" id="login-link" href="admin.html" hidden>Go to admin sign in →</a>
+      <div class="notice">After the first admin is created, this setup page is locked. Use a unique password and keep it private.</div>
+    </form>
+    <section class="panel" id="closed-panel" hidden><h1>Setup unavailable</h1><p class="intro" id="closed-message">Admin setup is closed.</p><a class="back" href="admin.html">Go to admin sign in →</a></section>
+  </main>
+  <footer class="footer"><div class="wrap">Project Deno · First admin setup</div></footer>
+  <script>
+    const form=document.getElementById('setup-form'),closed=document.getElementById('closed-panel'),status=document.getElementById('setup-status');
+    async function fetchApi(url,options){try{return await fetch(url,options)}catch(error){throw new Error('Cannot reach the PHP setup API. Confirm api/admin.php is deployed and PHP is enabled.')}}
+    async function readResponse(response){const raw=await response.text();let data=null;try{data=raw?JSON.parse(raw):null}catch(error){}if(!response.ok)throw new Error(data&&data.message?data.message:`Setup API returned HTTP ${response.status}. Check the PHP error log.`);if(!data||typeof data!=='object'||Array.isArray(data))throw new Error(`Setup API returned a non-JSON or invalid response (HTTP ${response.status}). Confirm PHP is enabled.`);return data}
+    async function init(){try{const response=await fetchApi('api/admin.php?action=status',{headers:{'Accept':'application/json'}});const data=await readResponse(response);if(!data.databaseReady){closed.hidden=false;document.getElementById('closed-message').textContent=data.message||'The database is unavailable. Verify the production settings and PHP pdo_mysql extension.';return}if(data.setupTokenRequired&&location.protocol!=='https:'){closed.hidden=false;document.getElementById('closed-message').textContent='Use the HTTPS version of this site to create the first admin account.';return}if(!data.setupRequired){closed.hidden=false;document.getElementById('closed-message').textContent='An admin account already exists. Sign in to manage events.';return}const keyField=document.getElementById('setup-key-field'),keyInput=document.getElementById('setup-key');keyField.hidden=!data.setupTokenRequired;keyInput.required=Boolean(data.setupTokenRequired);if(data.setupTokenRequired)document.querySelector('#setup-form .notice').textContent='Enter the one-time setup key configured on the server. Use HTTPS. This setup closes after the first admin is created.';form.hidden=false}catch(error){closed.hidden=false;document.getElementById('closed-message').textContent=error.message||'The setup page could not reach its PHP API.'}}
+    form.addEventListener('submit',async event=>{event.preventDefault();const button=document.getElementById('create-button');const password=document.getElementById('password').value;const confirmation=document.getElementById('confirmation').value;status.dataset.state='';if(password!==confirmation){status.textContent='The passwords do not match.';status.dataset.state='error';return}button.disabled=true;status.textContent='Creating account…';try{const response=await fetchApi('api/admin.php',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({action:'setup',setupKey:document.getElementById('setup-key').value,username:document.getElementById('username').value.trim(),password,confirmation})});const data=await readResponse(response);form.reset();status.textContent=data.message;document.getElementById('login-link').hidden=false;button.hidden=true}catch(error){status.textContent=error.message||'Could not create the admin account.';status.dataset.state='error'}finally{button.disabled=false}});
+    init();
+  </script>
+</body>
+</html>

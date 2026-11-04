@@ -1,0 +1,12 @@
+DirectoryIndex index.html
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule (^|/)(?:\.git|\.vscode)(?:/|$) - [F,L,NC]
+</IfModule>
+
+# Do not serve database exports, local configuration, or development files.
+<FilesMatch "^(database\.sql|package\.json|README\.md|\.env.*|.*\.log)$">
+  Require all denied
+</FilesMatch>

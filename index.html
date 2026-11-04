@@ -1,0 +1,625 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="description" content="Find local events, compare ticket prices, and track ticket transfers with Project Deno.">
+  <title>Project Deno — Find your next event</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #191922;
+      --muted: #686977;
+      --line: #e7e6ed;
+      --paper: #fff;
+      --soft: #f7f6fa;
+      --violet: #7053ed;
+      --violet-dark: #563cce;
+      --green: #a9f4d0;
+      --max: 1440px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; color: var(--ink); background: #fff; font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; line-height: 1.5; }
+    a { color: inherit; text-decoration: none; }
+    button, input { font: inherit; }
+    button, a { -webkit-tap-highlight-color: transparent; }
+    button { cursor: pointer; }
+    a:focus-visible, button:focus-visible, input:focus-visible { outline: 3px solid #a894ff; outline-offset: 3px; }
+    .wrap { width: min(var(--max), calc(100% - 64px)); margin-inline: auto; }
+
+    .site-header { position: sticky; top: 0; z-index: 20; border-bottom: 1px solid #ecebf0; background: rgba(255,255,255,.96); backdrop-filter: blur(16px); }
+    .header-inner { position: relative; min-height: 86px; display: flex; align-items: center; gap: 16px; }
+    .menu-toggle { width: 54px; height: 54px; display: grid; place-items: center; flex: 0 0 auto; border: 1px solid #e2e0e9; border-radius: 17px; color: #393946; background: #fff; }
+    .menu-toggle:hover { background: var(--soft); }
+    .menu-toggle svg { width: 23px; height: 23px; }
+    .brand { display: inline-flex; align-items: center; gap: 13px; min-width: max-content; font-size: 25px; font-weight: 850; letter-spacing: -1.1px; }
+    .brand-mark { width: 45px; height: 45px; display: grid; place-items: center; border-radius: 15px; color: white; background: var(--violet); }
+    .brand-mark svg { width: 24px; height: 24px; }
+    .primary-nav { display: flex; align-items: center; gap: clamp(20px, 3vw, 45px); margin-left: auto; color: #5f5f6c; font-size: 15px; font-weight: 650; }
+    .primary-nav a:hover, .primary-nav a[aria-current="page"] { color: var(--violet-dark); }
+    .nav-actions { display: flex; align-items: center; gap: 10px; margin-left: 12px; }
+    .admin-access { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; border-radius: 13px; padding: 0 13px; color: var(--violet-dark); font-size: 13px; font-weight: 800; white-space: nowrap; }
+    .admin-access:hover { background: #f3f0ff; }
+    .button { min-height: 48px; display: inline-flex; align-items: center; justify-content: center; gap: 9px; border: 0; border-radius: 15px; padding: 0 21px; color: #fff; background: var(--violet); font-weight: 780; box-shadow: 0 9px 20px rgba(112,83,237,.16); transition: background .18s, transform .18s, box-shadow .18s; }
+    .button:hover { transform: translateY(-1px); background: var(--violet-dark); box-shadow: 0 12px 25px rgba(112,83,237,.22); }
+    .button-outline { min-height: 48px; display: inline-flex; align-items: center; justify-content: center; border: 2px solid #25252a; border-radius: 17px; padding: 0 20px; background: white; color: #4a4a56; font-weight: 760; }
+    .button-outline:hover { background: #f7f6fa; }
+    .quick-menu { position: absolute; top: calc(100% - 5px); left: 0; width: 250px; display: grid; gap: 3px; padding: 9px; border: 1px solid var(--line); border-radius: 16px; background: white; box-shadow: 0 18px 44px rgba(24,20,43,.15); }
+    .quick-menu[hidden] { display: none; }
+    .quick-menu a { padding: 11px 13px; border-radius: 10px; color: #444450; font-size: 14px; font-weight: 650; }
+    .quick-menu a:hover { color: var(--violet-dark); background: var(--soft); }
+    .quick-menu button { width: 100%; border: 0; padding: 11px 13px; border-radius: 10px; color: #444450; background: transparent; text-align: left; font-size: 14px; font-weight: 650; }
+    .quick-menu button:hover { color: var(--violet-dark); background: var(--soft); }
+
+    .hero { min-height: 610px; position: relative; isolation: isolate; display: flex; align-items: center; overflow: hidden; color: white; background: radial-gradient(ellipse at 83% 92%, rgba(106,20,45,.74), transparent 43%), linear-gradient(105deg, #171522 0%, #15131e 42%, #0c0b10 100%); }
+    .hero::before { content: ""; position: absolute; z-index: -1; width: min(55vw, 850px); aspect-ratio: 1; top: -67%; right: 7%; border: 62px solid rgba(255,255,255,.035); border-radius: 50%; box-shadow: 0 0 0 52px rgba(255,255,255,.025), 0 0 0 105px rgba(255,255,255,.018); }
+    .hero::after { content: ""; position: absolute; z-index: -1; right: -2%; bottom: -5%; width: 68%; height: 48%; opacity: .72; background: radial-gradient(ellipse at 54% 100%, rgba(132,31,58,.48), transparent 69%), repeating-linear-gradient(0deg, transparent 0 36px, rgba(255,255,255,.025) 37px 39px, transparent 40px 70px), repeating-linear-gradient(90deg, transparent 0 34px, rgba(102,25,48,.42) 35px 61px, transparent 62px 79px); transform: perspective(650px) rotateX(19deg); transform-origin: bottom; mask-image: linear-gradient(to top, #000 12%, rgba(0,0,0,.75) 60%, transparent 100%); }
+    .hero-inner { width: min(var(--max), calc(100% - 64px)); margin: 0 auto; padding: 88px 0 65px; position: relative; z-index: 1; }
+    .hero-copy { max-width: 870px; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 10px; color: #d9d0ff; font-size: 13px; font-weight: 850; letter-spacing: 1.7px; text-transform: uppercase; }
+    .eyebrow::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: #a78bff; box-shadow: 0 0 18px rgba(167,139,255,.7); }
+    h1 { max-width: 900px; margin: 33px 0 22px; font-size: clamp(54px, 7.1vw, 102px); line-height: .99; letter-spacing: -.067em; font-weight: 850; }
+    .hero-copy > p { max-width: 700px; margin: 0; color: #d4d2df; font-size: clamp(17px, 1.5vw, 22px); line-height: 1.72; }
+    .search-panel { max-width: 850px; min-height: 77px; display: grid; grid-template-columns: 28px minmax(0,1fr) auto; align-items: center; gap: 13px; margin-top: 34px; padding: 8px 10px 8px 22px; border-radius: 22px; background: #fff; box-shadow: 0 15px 45px rgba(0,0,0,.24); }
+    .search-panel svg { width: 23px; height: 23px; color: #82828f; }
+    .search-panel input { width: 100%; min-width: 0; border: 0; outline: 0; color: #252530; background: transparent; font-size: 16px; }
+    .search-panel input::placeholder { color: #8b8b98; }
+    .search-panel .button { min-height: 59px; padding-inline: 23px; border-radius: 17px; font-size: 15px; }
+    .hero-points { display: flex; flex-wrap: wrap; gap: 24px 34px; margin: 27px 0 0; padding: 0; list-style: none; color: #eeedf5; font-size: 14px; }
+    .hero-points li { display: inline-flex; align-items: center; gap: 10px; }
+    .hero-points svg { width: 17px; height: 17px; color: var(--green); }
+
+    .events-section { padding: 74px 0 85px; background: #faf9fc; }
+    .section-heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 25px; }
+    .section-kicker { display: block; margin-bottom: 8px; color: var(--violet-dark); font-size: 11px; font-weight: 850; letter-spacing: 1.6px; text-transform: uppercase; }
+    .section-heading h2 { margin: 0; font-size: clamp(32px, 4vw, 49px); line-height: 1.08; letter-spacing: -.055em; }
+    .section-heading p { margin: 9px 0 0; color: var(--muted); font-size: 15px; }
+    .filters { display: flex; flex-wrap: wrap; gap: 9px; margin-bottom: 25px; }
+    .filter { border: 1px solid #dedce8; border-radius: 999px; padding: 9px 16px; color: #565663; background: white; font-size: 13px; font-weight: 700; transition: .18s; }
+    .filter:hover, .filter[aria-pressed="true"] { border-color: var(--violet); color: white; background: var(--violet); }
+    .status-line { min-height: 21px; margin: 8px 0 14px; color: #777684; font-size: 13px; }
+    .event-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 19px; }
+    .event-card { overflow: hidden; border: 1px solid #e8e6ee; border-radius: 19px; background: white; box-shadow: 0 8px 26px rgba(30,24,50,.045); transition: transform .18s, box-shadow .18s; }
+    .event-card:hover { transform: translateY(-4px); box-shadow: 0 15px 32px rgba(30,24,50,.11); }
+    .event-art { height: 167px; position: relative; display: flex; align-items: end; overflow: hidden; padding: 17px; background: var(--art); }
+    .event-art::before { content: ""; position: absolute; width: 230px; height: 230px; top: -145px; right: -28px; border: 1px solid rgba(255,255,255,.55); border-radius: 50%; box-shadow: 0 0 0 25px rgba(255,255,255,.1), 0 0 0 52px rgba(255,255,255,.08); }
+    .event-art::after { content: ""; position: absolute; width: 150px; height: 150px; right: 45px; bottom: -105px; border-radius: 50%; background: rgba(19,13,38,.16); }
+    .event-symbol { position: absolute; top: 16px; right: 22px; color: rgba(255,255,255,.87); font-size: 57px; line-height: 1; }
+    .category-label { position: relative; z-index: 1; border: 1px solid rgba(255,255,255,.45); border-radius: 999px; padding: 5px 10px; color: white; background: rgba(24,18,39,.22); backdrop-filter: blur(6px); font-size: 11px; font-weight: 750; }
+    .event-info { padding: 18px; }
+    .event-date { color: #777684; font-size: 12px; font-weight: 700; }
+    .event-info h3 { margin: 7px 0 3px; font-size: 20px; line-height: 1.25; letter-spacing: -.035em; }
+    .event-venue { margin: 0; color: #72717e; font-size: 13px; }
+    .event-description { margin: 10px 0 0; color: #5f5e6b; font-size: 13px; }
+    .ticket-list { display: grid; margin-top: 15px; border-top: 1px solid #eeedf2; }
+    .ticket-row { display: grid; grid-template-columns: minmax(0,1fr) auto auto; align-items: center; gap: 11px; padding: 11px 0; border-bottom: 1px solid #eeedf2; }
+    .ticket-name { overflow: hidden; color: #3d3c48; font-size: 13px; font-weight: 700; text-overflow: ellipsis; }
+    .ticket-price { color: #282733; font-size: 13px; font-weight: 850; white-space: nowrap; }
+    .ticket-request { border: 0; border-radius: 999px; padding: 7px 12px; color: #fff; background: var(--violet); font-size: 11px; font-weight: 800; white-space: nowrap; }
+    .ticket-request:hover { background: var(--violet-dark); }
+    .ticket-request:disabled { cursor: not-allowed; opacity: .62; }
+    .empty-state { grid-column: 1/-1; padding: 54px 20px; border: 1px dashed #d7d4e2; border-radius: 18px; color: #6b6978; background: #fff; text-align: center; }
+    .empty-state strong { display: block; margin-bottom: 5px; color: var(--ink); font-size: 18px; }
+    .request-note { margin: 18px 0 0; color: #777684; font-size: 12px; }
+
+    .how-section { padding: 78px 0 88px; background: white; }
+    .how-heading { max-width: 670px; margin: 0 auto 33px; text-align: center; }
+    .how-heading h2 { margin: 0; font-size: clamp(32px, 4vw, 48px); letter-spacing: -.055em; }
+    .how-heading p { margin: 11px 0 0; color: var(--muted); font-size: 15px; }
+    .steps { display: grid; grid-template-columns: repeat(3,1fr); gap: 17px; }
+    .step { min-height: 186px; padding: 24px; border: 1px solid #e8e6ef; border-radius: 18px; background: #fbfaff; }
+    .step-number { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 12px; color: var(--violet-dark); background: #eee9ff; font-size: 14px; font-weight: 850; }
+    .step h3 { margin: 17px 0 6px; font-size: 18px; letter-spacing: -.025em; }
+    .step p { margin: 0; color: #6d6c79; font-size: 13px; line-height: 1.65; }
+    .footer { padding: 24px 0; border-top: 1px solid var(--line); color: #777684; background: white; font-size: 12px; }
+    .footer-inner { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
+    .footer-brand { color: var(--ink); font-weight: 850; }
+    .footer-links { display: flex; align-items: center; gap: 18px; }
+    .footer-links a:hover { color: var(--violet-dark); }
+
+    dialog { width: min(500px, calc(100% - 28px)); max-height: min(90vh, 760px); overflow: auto; padding: 0; border: 1px solid rgba(255,255,255,.24); border-radius: 22px; color: var(--ink); background: white; box-shadow: 0 28px 90px rgba(12,9,25,.35); }
+    dialog::backdrop { background: rgba(15,13,25,.62); backdrop-filter: blur(4px); }
+    .dialog-inner { padding: 26px; }
+    .dialog-head { display: flex; align-items: start; justify-content: space-between; gap: 20px; }
+    .dialog-head h2 { margin: 0; font-size: 25px; letter-spacing: -.045em; }
+    .dialog-head p { margin: 5px 0 0; color: var(--muted); font-size: 13px; }
+    .close-dialog { width: 36px; height: 36px; flex: 0 0 auto; border: 0; border-radius: 50%; color: #4b4a56; background: #f1f0f5; font-size: 21px; }
+    .request-form, .track-form { display: grid; gap: 14px; margin-top: 21px; }
+    .request-form[hidden], .track-form[hidden] { display: none; }
+    .field { display: grid; gap: 6px; }
+    .field label { font-size: 12px; font-weight: 750; }
+    .field input { width: 100%; min-height: 45px; border: 1px solid #dedde5; border-radius: 11px; padding: 10px 12px; color: var(--ink); background: white; }
+    .consent { display: flex; align-items: flex-start; gap: 9px; color: #5c5b67; font-size: 12px; }
+    .consent input { margin-top: 3px; accent-color: var(--violet); }
+    .request-form .button, .track-form .button { justify-self: start; }
+    .form-status { min-height: 20px; margin: 0; color: #565462; font-size: 13px; }
+    .form-status[data-state="error"] { color: #a33732; }
+    .hp-field { position: absolute !important; left: -10000px !important; width: 1px !important; height: 1px !important; overflow: hidden !important; }
+    .request-pending[hidden], .track-result[hidden] { display: none !important; }
+    .request-pending { display: grid; justify-items: center; gap: 12px; padding: 22px 5px 4px; text-align: center; }
+    .pending-label { color: var(--violet-dark); font-size: 10px; font-weight: 850; letter-spacing: 1.3px; }
+    .request-pending h3 { margin: 0; font-size: 25px; letter-spacing: -.045em; }
+    .email-status, .pending-detail { max-width: 390px; margin: 0; color: #666572; font-size: 13px; }
+    .request-countdown { width: 116px; height: 116px; display: grid; place-items: center; margin: 3px 0; border: 6px solid #e6e0ff; border-right-color: var(--violet); border-radius: 50%; color: #392a88; font-size: 29px; font-weight: 850; font-variant-numeric: tabular-nums; }
+    .pending-detail[data-state="expired"] { color: #895333; }
+    .reference-row { width: 100%; display: flex; align-items: center; justify-content: center; gap: 9px; margin-top: 3px; }
+    .reference-code { border-radius: 8px; padding: 6px 9px; color: #4b426e; background: #f2efff; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12px; letter-spacing: .06em; }
+    .copy-code { border: 0; padding: 6px 9px; border-radius: 8px; color: var(--violet-dark); background: #f2efff; font-size: 11px; font-weight: 800; }
+    .track-result { margin-top: 20px; padding: 17px; border: 1px solid #e5e1f4; border-radius: 14px; background: #faf9ff; }
+    .track-result strong { display: block; margin-bottom: 5px; color: #34266f; font-size: 16px; }
+    .track-result p { margin: 0; color: #686674; font-size: 13px; }
+
+    @media (max-width: 1050px) {
+      .wrap, .hero-inner { width: min(var(--max), calc(100% - 42px)); }
+      .header-inner { min-height: 76px; gap: 12px; }
+      .primary-nav { gap: 19px; font-size: 13px; }
+      .nav-actions { gap: 8px; margin-left: 3px; }
+      .admin-access { padding-inline: 10px; font-size: 12px; }
+      .button, .button-outline { min-height: 44px; padding-inline: 15px; font-size: 13px; }
+      .menu-toggle { width: 46px; height: 46px; }
+      .brand { font-size: 22px; }
+      .brand-mark { width: 40px; height: 40px; }
+      .event-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+    }
+    @media (max-width: 760px) {
+      .wrap, .hero-inner { width: min(var(--max), calc(100% - 32px)); }
+      .header-inner { min-height: 70px; }
+      .brand { gap: 9px; font-size: 21px; }
+      .brand-mark { width: 38px; height: 38px; border-radius: 13px; }
+      .primary-nav { display: none; }
+      .nav-actions { margin-left: auto; }
+      .nav-actions .button-outline { display: none; }
+      .admin-access { min-height: 40px; padding-inline: 8px; font-size: 11px; }
+      .hero { min-height: 600px; }
+      .hero::after { width: 100%; height: 37%; opacity: .5; }
+      .hero-inner { padding: 70px 0 49px; }
+      h1 { max-width: 650px; margin-top: 27px; font-size: clamp(54px, 10vw, 78px); }
+      .hero-copy > p { max-width: 590px; font-size: 17px; }
+      .hero-points { gap: 13px 22px; font-size: 12px; }
+      .events-section, .how-section { padding: 59px 0 66px; }
+      .steps { gap: 12px; }
+      .step { padding: 18px; }
+    }
+    @media (max-width: 540px) {
+      .wrap, .hero-inner { width: calc(100% - 28px); }
+      .header-inner { min-height: 66px; gap: 9px; }
+      .menu-toggle { width: 40px; height: 40px; border-radius: 13px; }
+      .brand { font-size: 19px; }
+      .brand-mark { width: 35px; height: 35px; border-radius: 12px; }
+      .nav-actions { gap: 0; }
+      .nav-actions .button { min-height: 42px; padding-inline: 13px; border-radius: 13px; font-size: 12px; }
+      .hero { min-height: 570px; }
+      .hero-inner { padding: 61px 0 42px; }
+      .eyebrow { font-size: 10px; letter-spacing: 1.3px; }
+      h1 { margin: 25px 0 18px; font-size: clamp(48px, 13vw, 66px); letter-spacing: -.065em; }
+      .hero-copy > p { font-size: 15px; line-height: 1.65; }
+      .search-panel { min-height: 0; grid-template-columns: 24px minmax(0,1fr); gap: 8px; margin-top: 26px; padding: 14px; border-radius: 18px; }
+      .search-panel input { min-height: 42px; font-size: 14px; }
+      .search-panel .button { grid-column: 1/-1; width: 100%; min-height: 48px; border-radius: 13px; }
+      .hero-points { display: grid; gap: 11px; margin-top: 21px; }
+      .section-heading { display: block; margin-bottom: 20px; }
+      .section-heading h2, .how-heading h2 { font-size: 34px; }
+      .section-heading p { font-size: 13px; }
+      .filters { gap: 7px; margin-bottom: 18px; }
+      .filter { padding: 8px 12px; font-size: 12px; }
+      .event-grid { grid-template-columns: 1fr; gap: 14px; }
+      .event-art { height: 145px; }
+      .steps { grid-template-columns: 1fr; }
+      .step { min-height: 0; }
+      .footer-inner { align-items: flex-start; flex-direction: column; }
+      .footer-links { gap: 14px; }
+      .dialog-inner { padding: 21px; }
+      .request-countdown { width: 104px; height: 104px; }
+    }
+    @media (max-width: 420px) {
+      .nav-actions > .button { display: none; }
+      .admin-access { min-height: 38px; padding-inline: 7px; font-size: 11px; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; } }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <button class="menu-toggle" id="menu-toggle" type="button" aria-label="Open quick menu" aria-expanded="false" aria-controls="quick-menu">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+      <a class="brand" href="#top" aria-label="Project Deno home">
+        <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M5 7h14M5 12h9M5 17h6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="m16 15 3 2-3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        <span>Project Deno</span>
+      </a>
+      <nav class="primary-nav" aria-label="Main navigation">
+        <a href="#events">Explore events</a>
+        <a href="#how-it-works">How it works</a>
+        <button id="track-open-menu" type="button">Track a transfer</button>
+        <a href="admin.html">Admin login</a>
+      </nav>
+      <div class="nav-actions">
+        <button class="button-outline" id="track-open" type="button">Track transfer</button>
+        <a class="admin-access" href="admin.html">Admin login</a>
+        <a class="button" href="#events">Find tickets</a>
+      </div>
+      <div class="quick-menu" id="quick-menu" hidden>
+        <a href="#events">Explore events</a>
+        <a href="#how-it-works">How it works</a>
+        <a href="admin.html">Admin login</a>
+        <a href="#events">Find tickets</a>
+      </div>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-inner">
+        <div class="hero-copy">
+          <span class="eyebrow">Your next great night starts here</span>
+          <h1 id="hero-title">Make room for a great night.</h1>
+          <p>Find an event, explore clear ticket options, and ask the event team to arrange your ticket transfer. Track it while confirmation is pending.</p>
+          <form class="search-panel" id="search-form" role="search">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8" stroke="currentColor" stroke-width="2"/><path d="m16 16 4.3 4.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            <input id="search-input" type="search" placeholder="Event, artist, venue, or city" aria-label="Search events, artists, venues, or cities">
+            <button class="button" type="submit">Search events <span aria-hidden="true">→</span></button>
+          </form>
+          <ul class="hero-points" aria-label="Ticket transfer features">
+            <li><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m3.5 10.5 4 4 9-9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Clear ticket prices</li>
+            <li><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m3.5 10.5 4 4 9-9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Quick transfer requests</li>
+            <li><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m3.5 10.5 4 4 9-9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Live transfer tracking</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="events-section" id="events" aria-labelledby="events-title">
+      <div class="wrap">
+        <div class="section-heading">
+          <div><span class="section-kicker">Pick your next outing</span><h2 id="events-title">Explore upcoming events</h2><p>Browse local listings and compare ticket options before starting a transfer.</p></div>
+          <a class="button-outline" href="admin.html">Admin login</a>
+        </div>
+        <div class="filters" role="group" aria-label="Filter events by category">
+          <button class="filter" type="button" data-filter="all" aria-pressed="true">All events</button>
+          <button class="filter" type="button" data-filter="music" aria-pressed="false">Music</button>
+          <button class="filter" type="button" data-filter="arts" aria-pressed="false">Arts</button>
+          <button class="filter" type="button" data-filter="comedy" aria-pressed="false">Comedy</button>
+          <button class="filter" type="button" data-filter="family" aria-pressed="false">Family</button>
+        </div>
+        <p class="status-line" id="load-status" role="status" aria-live="polite"></p>
+        <div class="event-grid" id="event-grid" aria-live="polite"></div>
+        <p class="request-note">A transfer request goes to the event team. It does not reserve or purchase a ticket.</p>
+      </div>
+    </section>
+
+    <section class="how-section" id="how-it-works" aria-labelledby="how-title">
+      <div class="wrap">
+        <div class="how-heading"><span class="section-kicker">Simple from start to finish</span><h2 id="how-title">How ticket transfers work</h2><p>Know what happens after you find an event.</p></div>
+        <div class="steps">
+          <article class="step"><span class="step-number">01</span><h3>Find your event</h3><p>Search the listings, check the venue and date, and compare the available ticket types and prices.</p></article>
+          <article class="step"><span class="step-number">02</span><h3>Start a transfer</h3><p>Choose a ticket and share your name and email so the event team can arrange the transfer.</p></article>
+          <article class="step"><span class="step-number">03</span><h3>Track your transfer</h3><p>Keep the reference code and check whether the event team has confirmed the ticket transfer.</p></article>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap footer-inner"><span><a class="footer-brand" href="#top">Project Deno</a> · Find your next good time.</span><nav class="footer-links" aria-label="Footer navigation"><a href="#how-it-works">How it works</a><a href="admin.html">Admin login</a></nav></div>
+  </footer>
+
+  <dialog id="request-dialog" aria-labelledby="dialog-title"><div class="dialog-inner">
+    <div class="dialog-head"><div><h2 id="dialog-title">Start a ticket transfer</h2><p id="dialog-summary"></p></div><button class="close-dialog" id="close-dialog" type="button" aria-label="Close">×</button></div>
+    <form class="request-form" id="request-form">
+      <div class="field"><label for="request-name">Your name</label><input id="request-name" name="name" autocomplete="name" maxlength="80" required></div>
+      <div class="field"><label for="request-email">Email for a reply</label><input id="request-email" name="email" type="email" autocomplete="email" maxlength="254" required></div>
+      <label class="consent"><input type="checkbox" name="consent" required><span>I agree to share my details with the event team to arrange this transfer and receive an email update.</span></label>
+      <div class="hp-field" aria-hidden="true"><label for="request-website">Leave empty</label><input id="request-website" name="website" tabindex="-1" autocomplete="off"></div>
+      <button class="button" id="request-submit" type="submit">Send transfer request <span aria-hidden="true">→</span></button>
+      <p class="form-status" id="request-status" role="status" aria-live="polite"></p>
+    </form>
+    <section class="request-pending" id="request-pending" hidden>
+      <span class="pending-label">AWAITING TEAM CONFIRMATION</span>
+      <h3 id="pending-title">Transfer request received</h3>
+      <p id="email-status" class="email-status"></p>
+      <output id="request-countdown" class="request-countdown" aria-label="Confirmation wait timer" aria-live="off">05:00</output>
+      <p id="pending-detail" class="pending-detail" role="status" aria-live="polite">Your transfer is waiting for confirmation. No ticket has been transferred yet.</p>
+      <div class="reference-row"><code class="reference-code" id="request-reference"></code><button class="copy-code" id="copy-code" type="button">Copy code</button></div>
+      <p class="pending-detail">Save this reference code to check your transfer later.</p>
+    </section>
+  </div></dialog>
+
+  <dialog id="track-dialog" aria-labelledby="track-title"><div class="dialog-inner">
+    <div class="dialog-head"><div><h2 id="track-title">Track a transfer</h2><p>Enter the reference code shown after you started the transfer.</p></div><button class="close-dialog" id="close-track-dialog" type="button" aria-label="Close">×</button></div>
+    <form class="track-form" id="track-form">
+      <div class="field"><label for="track-code">Transfer reference code</label><input id="track-code" name="code" minlength="32" maxlength="32" pattern="[a-fA-F0-9]{32}" autocomplete="off" placeholder="32-character code" required></div>
+      <button class="button" type="submit">Check status</button>
+      <p class="form-status" id="track-status" role="status" aria-live="polite"></p>
+    </form>
+    <div class="track-result" id="track-result" hidden><strong id="track-result-title"></strong><p id="track-result-detail"></p></div>
+  </div></dialog>
+
+  <script>
+    const categoryNames = {music: 'Music', arts: 'Arts & culture', comedy: 'Comedy', family: 'Family'};
+    const categoryColors = {
+      music: 'linear-gradient(135deg,#d8899d,#7248a8)',
+      arts: 'linear-gradient(135deg,#8b7af0,#b766a4)',
+      comedy: 'linear-gradient(135deg,#f2aa74,#d95879)',
+      family: 'linear-gradient(135deg,#66b7c4,#6272c6)'
+    };
+    const categorySymbols = {music: '♪', arts: '✦', comedy: '☻', family: '✿'};
+    const grid = document.getElementById('event-grid');
+    const searchInput = document.getElementById('search-input');
+    const menuToggle = document.getElementById('menu-toggle');
+    const quickMenu = document.getElementById('quick-menu');
+    let events = [];
+    let httpsRequired = false;
+    let activeFilter = 'all';
+    let selectedTicket = null;
+    let countdownInterval = null;
+    let statusPollInterval = null;
+    const make = (tag, className, text) => {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      if (text !== undefined) node.textContent = text;
+      return node;
+    };
+    async function fetchApi(url, options) {
+      try { return await fetch(url, options); }
+      catch (error) { throw new Error('Could not reach the project API. Confirm PHP is enabled and the api/ files were deployed.'); }
+    }
+    async function readApiResponse(response, endpointName) {
+      const raw = await response.text();
+      let data = null;
+      try { data = raw ? JSON.parse(raw) : null; } catch (error) {}
+      if (!response.ok) throw new Error(data && data.message ? data.message : `${endpointName} returned HTTP ${response.status}. Check the PHP API deployment.`);
+      if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error(`${endpointName} returned a non-JSON or invalid response (HTTP ${response.status}). Confirm PHP is enabled.`);
+      return data;
+    }
+    function money(value) {
+      return 'KES ' + Number(value).toLocaleString('en-KE', {minimumFractionDigits: Number(value) % 1 ? 2 : 0, maximumFractionDigits: 2});
+    }
+    function niceDate(value) {
+      const date = new Date(value + 'T00:00:00');
+      return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat('en-KE', {weekday: 'short', day: 'numeric', month: 'short', year: 'numeric'}).format(date);
+    }
+    function renderEvents() {
+      const query = searchInput.value.trim().toLowerCase();
+      const visible = events.filter(item => {
+        const searchable = `${item.title} ${item.venue} ${item.description || ''} ${categoryNames[item.category] || ''} ${(item.tickets || []).map(ticket => ticket.name).join(' ')}`.toLowerCase();
+        return (activeFilter === 'all' || item.category === activeFilter) && (!query || searchable.includes(query));
+      });
+      grid.replaceChildren();
+      if (!visible.length) {
+        const empty = make('div', 'empty-state');
+        empty.append(make('strong', '', events.length ? 'No matching events' : 'No events listed yet'));
+        empty.append(document.createTextNode(events.length ? 'Try another search or category.' : 'Check back soon for upcoming events.'));
+        grid.append(empty);
+        return;
+      }
+      visible.forEach(item => {
+        const card = make('article', 'event-card');
+        const art = make('div', 'event-art');
+        art.style.setProperty('--art', categoryColors[item.category] || categoryColors.music);
+        const symbol = make('span', 'event-symbol', categorySymbols[item.category] || '✦');
+        symbol.setAttribute('aria-hidden', 'true');
+        art.append(symbol, make('span', 'category-label', categoryNames[item.category] || 'Event'));
+        const info = make('div', 'event-info');
+        info.append(make('div', 'event-date', `${niceDate(item.date)}${item.time ? ' · ' + item.time : ''}`), make('h3', '', item.title), make('p', 'event-venue', item.venue));
+        if (item.description) info.append(make('p', 'event-description', item.description));
+        const tickets = make('div', 'ticket-list');
+        (item.tickets || []).forEach(ticket => {
+          const row = make('div', 'ticket-row');
+          row.append(make('span', 'ticket-name', ticket.name), make('span', 'ticket-price', money(ticket.price)));
+          const action = make('button', 'ticket-request', 'Transfer');
+          action.type = 'button';
+          const httpsUnavailable = httpsRequired && location.protocol !== 'https:';
+          if (httpsUnavailable) {
+            action.textContent = 'Use HTTPS';
+            action.disabled = true;
+            action.title = 'Open the secure HTTPS version of this site to start a transfer.';
+          } else {
+            action.addEventListener('click', () => openRequest(item, ticket));
+          }
+          row.append(action);
+          tickets.append(row);
+        });
+        info.append(tickets);
+        card.append(art, info);
+        grid.append(card);
+      });
+    }
+    async function loadEvents() {
+      document.getElementById('load-status').textContent = 'Loading events…';
+      try {
+        const response = await fetchApi('api/events.php', {headers: {'Accept': 'application/json'}});
+        const data = await readApiResponse(response, 'Events API');
+        events = Array.isArray(data.events) ? data.events : [];
+        httpsRequired = data.httpsRequired === true;
+        document.getElementById('load-status').textContent = events.length ? '' : 'No events are available right now.';
+        renderEvents();
+      } catch (error) {
+        document.getElementById('load-status').textContent = 'Events are temporarily unavailable. Please refresh in a moment.';
+        grid.replaceChildren();
+      }
+    }
+    document.querySelectorAll('.filter').forEach(button => button.addEventListener('click', () => {
+      activeFilter = button.dataset.filter;
+      document.querySelectorAll('.filter').forEach(filter => filter.setAttribute('aria-pressed', String(filter === button)));
+      renderEvents();
+    }));
+    searchInput.addEventListener('input', renderEvents);
+    document.getElementById('search-form').addEventListener('submit', event => {
+      event.preventDefault();
+      renderEvents();
+      document.getElementById('events').scrollIntoView({behavior: 'smooth'});
+    });
+    menuToggle.addEventListener('click', () => {
+      const isOpen = menuToggle.getAttribute('aria-expanded') === 'true';
+      menuToggle.setAttribute('aria-expanded', String(!isOpen));
+      menuToggle.setAttribute('aria-label', isOpen ? 'Open quick menu' : 'Close quick menu');
+      quickMenu.hidden = isOpen;
+    });
+    quickMenu.querySelectorAll('a').forEach(link => link.addEventListener('click', () => {
+      quickMenu.hidden = true;
+      menuToggle.setAttribute('aria-expanded', 'false');
+      menuToggle.setAttribute('aria-label', 'Open quick menu');
+    }));
+
+    const dialog = document.getElementById('request-dialog');
+    function openRequest(item, ticket) {
+      if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+      if (statusPollInterval) { clearInterval(statusPollInterval); statusPollInterval = null; }
+      selectedTicket = {item, ticket};
+      document.getElementById('dialog-summary').textContent = `${item.title} · ${ticket.name} · ${money(ticket.price)}`;
+      document.getElementById('request-status').textContent = '';
+      document.getElementById('request-status').dataset.state = '';
+      document.getElementById('request-form').reset();
+      document.getElementById('request-form').hidden = false;
+      document.getElementById('request-pending').hidden = true;
+      document.getElementById('request-countdown').textContent = '05:00';
+      document.getElementById('pending-title').textContent = 'Transfer request received';
+      document.getElementById('pending-detail').textContent = 'Your transfer is waiting for confirmation. No ticket has been transferred yet.';
+      document.getElementById('pending-detail').dataset.state = '';
+      document.getElementById('email-status').textContent = '';
+      document.getElementById('request-reference').textContent = '';
+      dialog.showModal();
+      document.getElementById('request-name').focus();
+    }
+    function startConfirmationCountdown(requestCode) {
+      const output = document.getElementById('request-countdown');
+      const title = document.getElementById('pending-title');
+      const detail = document.getElementById('pending-detail');
+      const expiresAt = Date.now() + 5 * 60 * 1000;
+      let expired = false;
+      function applyStatus(status) {
+        if (status === 'pending') return;
+        clearInterval(countdownInterval);
+        clearInterval(statusPollInterval);
+        countdownInterval = null;
+        statusPollInterval = null;
+        output.textContent = '';
+        title.textContent = status === 'transferred' ? 'Transfer confirmed' : 'Transfer could not be completed';
+        detail.textContent = status === 'transferred' ? 'The event team marked the ticket transfer as complete. Check your email for any further details.' : 'The event team could not complete this ticket transfer. Please check your email for details.';
+        detail.dataset.state = status === 'failed' ? 'expired' : '';
+      }
+      async function pollStatus() {
+        try {
+          const response = await fetchApi(`api/request-status.php?code=${encodeURIComponent(requestCode)}`, {headers: {'Accept': 'application/json'}, cache: 'no-store'});
+          const data = await readApiResponse(response, 'Transfer status API');
+          applyStatus(data.status);
+        } catch (error) { /* Status polling is retried on the next interval. */ }
+      }
+      function update() {
+        const remaining = Math.max(0, expiresAt - Date.now());
+        const minutes = String(Math.floor(remaining / 60000)).padStart(2, '0');
+        const seconds = String(Math.floor((remaining % 60000) / 1000)).padStart(2, '0');
+        output.textContent = `${minutes}:${seconds}`;
+        if (remaining === 0 && !expired) {
+          expired = true;
+          clearInterval(countdownInterval);
+          countdownInterval = null;
+          title.textContent = 'No confirmation yet';
+          detail.textContent = 'Your transfer request was received and may still be pending. No ticket has been issued yet.';
+          detail.dataset.state = 'expired';
+          pollStatus().then(() => { if (statusPollInterval) { clearInterval(statusPollInterval); statusPollInterval = null; } });
+        }
+      }
+      update();
+      countdownInterval = setInterval(update, 1000);
+      statusPollInterval = setInterval(() => { if (!expired) pollStatus(); }, 5000);
+    }
+    document.getElementById('copy-code').addEventListener('click', async () => {
+      const code = document.getElementById('request-reference').textContent;
+      if (!code) return;
+      const button = document.getElementById('copy-code');
+      try {
+        await navigator.clipboard.writeText(code);
+        button.textContent = 'Copied';
+      } catch (error) {
+        button.textContent = 'Select code';
+      }
+    });
+    document.getElementById('close-dialog').addEventListener('click', () => dialog.close());
+    dialog.addEventListener('click', event => { if (event.target === dialog) dialog.close(); });
+    document.getElementById('request-form').addEventListener('submit', async event => {
+      event.preventDefault();
+      if (!selectedTicket) return;
+      const form = event.currentTarget;
+      const status = document.getElementById('request-status');
+      const button = document.getElementById('request-submit');
+      const payload = Object.fromEntries(new FormData(form).entries());
+      payload.consent = form.elements.consent.checked;
+      payload.eventId = selectedTicket.item.id;
+      payload.ticketId = selectedTicket.ticket.id;
+        status.textContent = 'Starting your transfer…';
+      status.dataset.state = '';
+      button.disabled = true;
+      try {
+        const response = await fetchApi('api/contact.php', {method: 'POST', headers: {'Content-Type': 'application/json', 'Accept': 'application/json'}, body: JSON.stringify(payload)});
+        const result = await readApiResponse(response, 'Transfer API');
+        form.reset();
+        form.hidden = true;
+        document.getElementById('request-pending').hidden = false;
+        document.getElementById('email-status').textContent = result.emailSent ? `A transfer update was submitted to ${payload.email}.` : 'Your transfer request was recorded, but the confirmation email could not be sent.';
+        document.getElementById('pending-title').textContent = 'Transfer request received';
+        document.getElementById('pending-detail').textContent = 'Your transfer is waiting for confirmation. No ticket has been transferred yet.';
+        document.getElementById('pending-detail').dataset.state = '';
+        document.getElementById('request-reference').textContent = result.requestCode || '';
+        document.getElementById('copy-code').textContent = 'Copy code';
+        startConfirmationCountdown(result.requestCode);
+      } catch (error) {
+        status.textContent = error.message || 'Could not send the transfer request. Please try again.';
+        status.dataset.state = 'error';
+      } finally { button.disabled = false; }
+    });
+
+    const trackDialog = document.getElementById('track-dialog');
+    const trackForm = document.getElementById('track-form');
+    function openTrackDialog() {
+      trackForm.reset();
+      trackForm.hidden = false;
+      document.getElementById('track-status').textContent = '';
+      document.getElementById('track-status').dataset.state = '';
+      document.getElementById('track-result').hidden = true;
+      trackDialog.showModal();
+      document.getElementById('track-code').focus();
+    }
+    document.getElementById('track-open').addEventListener('click', openTrackDialog);
+    document.getElementById('track-open-menu').addEventListener('click', () => {
+      quickMenu.hidden = true;
+      menuToggle.setAttribute('aria-expanded', 'false');
+      menuToggle.setAttribute('aria-label', 'Open quick menu');
+      openTrackDialog();
+    });
+    document.getElementById('close-track-dialog').addEventListener('click', () => trackDialog.close());
+    trackDialog.addEventListener('click', event => { if (event.target === trackDialog) trackDialog.close(); });
+    trackForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      const code = document.getElementById('track-code').value.trim().toLowerCase();
+      const status = document.getElementById('track-status');
+      const button = trackForm.querySelector('button[type="submit"]');
+      button.disabled = true;
+      status.textContent = 'Checking transfer…';
+      status.dataset.state = '';
+      document.getElementById('track-result').hidden = true;
+      try {
+        const response = await fetchApi(`api/request-status.php?code=${encodeURIComponent(code)}`, {headers: {'Accept': 'application/json'}, cache: 'no-store'});
+        const data = await readApiResponse(response, 'Transfer status API');
+        const messages = {
+          pending: ['Transfer is pending', 'The event team has not confirmed the transfer yet. Your transfer request remains recorded.'],
+          transferred: ['Transfer confirmed', 'The event team marked the ticket transfer as complete. Check your email for any further details.'],
+          failed: ['Transfer could not be completed', 'The event team could not complete this ticket transfer. Please check your email for details.']
+        };
+        const message = messages[data.status] || ['Transfer status unavailable', 'Please try again later.'];
+        document.getElementById('track-result-title').textContent = message[0];
+        document.getElementById('track-result-detail').textContent = message[1];
+        document.getElementById('track-result').hidden = false;
+        status.textContent = '';
+      } catch (error) {
+        status.textContent = error.message || 'Could not check this transfer. Please try again.';
+        status.dataset.state = 'error';
+      } finally { button.disabled = false; }
+    });
+    loadEvents();
+  </script>
+</body>
+</html>
